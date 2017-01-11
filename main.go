@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"os"
 	"time"
 )
@@ -14,4 +15,8 @@ func main() {
 
 	// Potentially flush anything currently stored in memory.
 	aggro.Close()
+
+	if scanner.Err() != nil {
+		log.Fatal(scanner.Err())
+	}
 }
