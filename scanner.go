@@ -10,7 +10,7 @@ import (
 
 const timeFormat = "2006-01-02T15:04:05+00:00"
 
-type Output struct {
+type Event struct {
 	Timestamp time.Time
 	Host      string
 	Service   int64
@@ -21,13 +21,13 @@ func NewScanner(r io.Reader) *Scanner {
 }
 
 type Scanner struct {
-	sc     *bufio.Scanner
-	err    error
-	output Output
+	sc    *bufio.Scanner
+	err   error
+	event Event
 }
 
-func (s *Scanner) Output() Output {
-	return s.output
+func (s *Scanner) Event() Event {
+	return s.event
 }
 
 func (s *Scanner) Err() error {
@@ -44,22 +44,22 @@ func (s *Scanner) Scan() bool {
 		return false
 	}
 
-	s.output, s.err = extract(s.sc.Text())
+	s.event, s.err = extract(s.sc.Text())
 	return s.err == nil
 }
 
-func extract(txt string) (Output, error) {
+func extract(txt string) (Event, error) {
 	s := bufio.NewScanner(strings.NewReader(txt))
 	s.Split(bufio.ScanWords)
 
-	o := Output{}
+	e := Event{}
 
 	s.Scan()
 	t, err := time.Parse(timeFormat, s.Text())
 	if err != nil {
-		return o, err
+		return e, err
 	}
-	o.Timestamp = t
+	e.Timestamp = t.UTC()
 
 	// Discard the next token
 	s.Scan()
@@ -67,14 +67,14 @@ func extract(txt string) (Output, error) {
 	for s.Scan() {
 		t := s.Text()
 		if strings.HasPrefix(t, "host=") {
-			o.Host = strings.Trim(t[5:], `"`)
+			e.Host = strings.Trim(t[5:], `"`)
 		} else if strings.HasPrefix(t, "service=") {
 			svc, err := strconv.ParseInt(strings.TrimSuffix(t[8:], "ms"), 10, 64)
 			if err != nil {
-				return o, err
+				return e, err
 			}
-			o.Service = svc
+			e.Service = svc
 		}
 	}
-	return o, nil
+	return e, nil
 }
